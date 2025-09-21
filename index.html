@@ -1,1 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Lilydale–Warburton Rail Trail 3D</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://unpkg.com/cesium/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <script src="https://unpkg.com/cesium/Build/Cesium/Cesium.js"></script>
+  <style>
+    html,body,#cesium{width:100%;height:100%;margin:0;padding:0}
 
+    
+    .legend{
+      position:absolute; top:8px; left:8px; z-index:9999;
+      background:rgba(0,0,0,.55); color:#fff;
+      padding:8px 10px; border-radius:8px;
+      font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      font-size:14px; line-height:1.3;
+    }
+    .legend .dot{
+      display:inline-block; width:10px; height:10px; border-radius:50%;
+      margin-right:6px; vertical-align:middle;
+    }
+  </style>
+</head>
+<body>
+  <div id="cesium"></div>
+
+  <div class="legend">
+    <div><strong>Lilydale to Warburton Rail Trail</strong></div>
+    <div style="margin-top:6px">
+      <span class="dot" style="background:#808080"></span>Car park&nbsp;&nbsp;
+      <span class="dot" style="background:#1E90FF"></span>Toilet&nbsp;&nbsp;
+      <span class="dot" style="background:#2E8B57"></span>Picnic tables&nbsp;&nbsp;
+      <span class="dot" style="background:#DAA520"></span>Lookout&nbsp;&nbsp;
+      <span class="dot" style="background:#FF6347"></span>Other
+    </div>
+  </div>
+<script>
+Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIxODk5M2M4NC0zYWE0LTQ0ZGUtYjcyNC04OTJmZWIzODQ4YjQiLCJpZCI6MzM2Njc0LCJpYXQiOjE3NTY1MjE4NzB9.QEYIT5By0JNCE6uneQcAqpwml-GaD4jkn1S9rXa7O3o';
+
+const USE_GOOGLE_TILES = false;
+const GOOGLE_MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
+
+const viewer = new Cesium.Viewer('cesium', {
+  terrain: Cesium.Terrain.fromWorldTerrain(),
+  timeline: false,
+  animation: false,
+  infoBox: true,
+  selectionIndicator: true
+});
+
+(async () => {
+  if (USE_GOOGLE_TILES) {
+    const tiles = await Cesium.GoogleMaps.createGooglePhotorealistic3DTileset({
+      apiKey: GOOGLE_MAPS_API_KEY
+    });
+    viewer.scene.primitives.add(tiles);
+  } else {
+    const osmBuildings = await Cesium.createOsmBuildingsAsync();
+    viewer.scene.primitives.add(osmBuildings);
+  }
+})();
+
+(async () => {
+  const trail = await Cesium.GeoJsonDataSource.load('Lilydale_to_Warburton_Rail_Trail.geojson', {
+    clampToGround: true
+  });
+  viewer.dataSources.add(trail);
+  trail.entities.values.forEach(e => {
+    if (e.polyline) {
+      e.polyline.material = Cesium.Color.WHITE;
+      e.polyline.width = 5;
+      e.polyline.clampToGround = true;
+    }
+  });
+  viewer.flyTo(trail, { duration: 2.0 });
+})();
+
+function colorFor(name = '') {
+  const n = name.toLowerCase();
+  if (n.includes('car park')) return Cesium.Color.GRAY;
+  if (n.includes('toilet'))   return Cesium.Color.DEEPSKYBLUE;
+  if (n.includes('picnic'))   return Cesium.Color.LIME;
+  if (n.includes('lookout'))  return Cesium.Color.ORANGE;
+  if (n.includes('water'))    return Cesium.Color.CYAN;
+  return Cesium.Color.YELLOW;
+}
+
+(async () => {
+  const wpts = await Cesium.GeoJsonDataSource.load('Lilydale_to_Warburton_Rail_Trail_waypoints.geojson', {
+    clampToGround: true
+  });
+  viewer.dataSources.add(wpts);
+  wpts.entities.values.forEach(ent => {
+    const nm = ent.properties?.Name?.getValue?.() || '';
+    ent.point = new Cesium.PointGraphics({
+      color: colorFor(nm),
+      pixelSize: 10,
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 1
+    });
+    ent.label = new Cesium.LabelGraphics({
+      text: nm || 'Waypoint',
+      font: '14px sans-serif',
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      outlineWidth: 2,
+      pixelOffset: new Cesium.Cartesian2(0, -18),
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      disableDepthTestDistance: Number.POSITIVE_INFINITY
+    });
+  });
+})();
+  // ---- AlphaEarth loader UI ----
+var aeTitle = ui.Label('AlphaEarth layer', {fontWeight:'bold', margin:'8px 0 0 0'});
+var aeId    = ui.Textbox({placeholder:'projects/<org>/assets/<alphaearth_asset_id>'});
+var aeType  = ui.Select({items:['Image','FeatureCollection'], value:'Image'});
+var aeAdd   = ui.Button('Add AlphaEarth Layer');
+
+panel.add(aeTitle);
+panel.add(ui.Panel([ui.Label('Asset ID:'), aeId], ui.Panel.Layout.Flow('horizontal')));
+panel.add(ui.Panel([ui.Label('Type:'), aeType], ui.Panel.Layout.Flow('horizontal')));
+panel.add(aeAdd);
+
+//Add AlphaEarth layer
+aeAdd.onClick(function () {
+  var id = aeId.getValue();
+  if (!id) { print('Enter an AlphaEarth asset ID.'); return; }
+  var layerName = 'AlphaEarth';
+
+  if (aeType.getValue() === 'Image') {
+    var img = ee.Image(id);
+    var vis = {min: 0, max: 1, palette: ['000000', 'ffffff']};
+    map.addLayer(img.clip(getAOI()), vis, layerName, true, 0.7);
+  } else {
+    var fc = ee.FeatureCollection(id);
+    var styled = fc.style({color: 'FF0000', fillColor: '00000000', width: 2});
+    map.addLayer(styled.clip(getAOI()), {}, layerName);
+  }
+  print('AlphaEarth layer added:', id);
+});
+
+</script>
+</body>
+</html>
