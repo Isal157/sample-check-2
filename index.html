@@ -39,8 +39,9 @@
 <script>
 Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIxODk5M2M4NC0zYWE0LTQ0ZGUtYjcyNC04OTJmZWIzODQ4YjQiLCJpZCI6MzM2Njc0LCJpYXQiOjE3NTY1MjE4NzB9.QEYIT5By0JNCE6uneQcAqpwml-GaD4jkn1S9rXa7O3o';
 
-const USE_GOOGLE_TILES = false;
-const GOOGLE_MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
+const googleTiles = await Cesium.createGooglePhotorealistic3DTileset();
+viewer.scene.primitives.add(googleTiles);
+
 
 const viewer = new Cesium.Viewer('cesium', {
   terrain: Cesium.Terrain.fromWorldTerrain(),
